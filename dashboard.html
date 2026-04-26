@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CloudLens AI | Multi-Cloud Cost Optimization</title>
+    <!-- Tailwind CSS v4 is used in this environment, but for a standalone template we'll use the CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4f46e5', // indigo-600
+                        secondary: '#8b5cf6', // violet-500
+                        accent: '#10b981', // emerald-500
+                        alert: '#ef4444', // red-500
+                        dark: '#020617', // slate-950
+                        'dark-card': '#0f172a' // slate-900
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #e2e8f0;
+        }
+        .bento-card {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid #1e293b;
+            border-radius: 1.5rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .bento-card:hover {
+            border-color: #4f46e5;
+            background: rgba(15, 23, 42, 0.7);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px -15px rgba(79, 70, 229, 0.2);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(0.98); }
+        }
+        .animate-pulse-subtle {
+            animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes glow-red {
+            0%, 100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.2); }
+            50% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 0.5); }
+        }
+        .anomaly-critical {
+            animation: glow-red 2s infinite;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased text-slate-200">
+    <div class="flex h-screen overflow-hidden bg-dark">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-dark border-r border-slate-800 hidden lg:flex flex-col shrink-0">
+            <div class="p-6 flex items-center gap-3">
+                <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M17.5 19L9 13l8.5-6"></path><path d="M7 19l8.5-6L7 7"></path></svg>
+                </div>
+                <h1 class="text-xl font-bold tracking-tight text-white">CloudLens <span class="text-primary italic">AI</span></h1>
+            </div>
+
+            <nav id="sidebar-nav" class="flex-1 px-4 py-4 space-y-1 overflow-y-auto no-scrollbar">
+                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 bg-slate-800 text-white rounded-xl shadow-sm transition-all" data-section="dashboard">
+                    <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    <span class="font-medium">Dashboard</span>
+                </a>
+                <a href="#total-cost-card" class="nav-link flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all" data-section="cost">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    <span>Cost Analysis</span>
+                </a>
+                <a href="#anomalies-card" class="nav-link flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all" data-section="anomalies">
+                    <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <span>Anomalies</span>
+                </a>
+                <a href="#logic-guard-card" class="nav-link flex items-center justify-between gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all" data-section="recommendations">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <span>Recommendations</span>
+                    </div>
+                    <span class="flex h-2 w-2 rounded-full bg-alert shadow-[0_0_8px_#ef4444]"></span>
+                </a>
+                <a href="#simulator-card" class="nav-link flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all" data-section="simulator">
+                    <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    <span>Simulator</span>
+                </a>
+            </nav>
+
+            <div class="p-6 border-t border-slate-800">
+                <div class="flex items-center gap-3 p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+                    <div class="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center font-bold text-slate-300">BG</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold truncate text-white uppercase tracking-wider">Admin User</p>
+                        <p class="text-[10px] text-slate-500 truncate">demo@cloudlens.ai</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950">
+            <!-- Header -->
+            <header class="h-16 bg-slate-950/80 backdrop-blur border-b border-slate-800 flex items-center justify-between px-8 shrink-0 z-20">
+                <div class="lg:hidden flex items-center gap-3">
+                    <button id="mobile-menu-btn" class="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <div class="w-7 h-7 bg-primary rounded-md flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="text-white"><path d="M17.5 19L9 13l8.5-6"></path></svg>
+                    </div>
+                </div>
+                <h2 class="text-lg font-semibold text-slate-200 hidden lg:block tracking-tight">Enterprise Infrastructure Hub</h2>
+                <div class="flex items-center gap-4">
+                    <div class="hidden sm:flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded-full border border-emerald-500/20 uppercase tracking-widest">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Live Analysis Active
+                    </div>
+                    <button class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors group">
+                        <span>Logout</span>
+                        <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Bento Dashboard Content -->
+            <div class="flex-1 overflow-y-auto no-scrollbar p-6 lg:p-8 space-y-6 bg-slate-950">
+                <!-- Summary Row -->
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div id="total-cost-card" class="bento-card p-5 border-slate-800 flex flex-col justify-between h-32 group">
+                        <div class="flex justify-between items-start">
+                            <span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Total Monthly Cost</span>
+                            <div class="p-1.5 bg-slate-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-bold text-white font-mono" id="total-cost">$42,910</span>
+                            <span class="text-alert text-xs font-medium flex items-center bg-alert/10 px-1.5 py-0.5 rounded">+12.5%</span>
+                        </div>
+                    </div>
+
+                    <div class="bento-card p-5 border-slate-800 flex flex-col justify-between h-32 group border-primary/20 shadow-lg shadow-primary/5">
+                        <div class="flex justify-between items-start">
+                            <span class="text-[10px] text-primary uppercase font-bold tracking-widest">Predicted Cost (AI)</span>
+                            <div class="p-1.5 bg-primary/10 rounded-lg animate-pulse">
+                                <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-bold text-primary font-mono" id="predicted-cost">$38,200</span>
+                            <span class="text-emerald-500 text-xs font-medium bg-emerald-500/10 px-1.5 py-0.5 rounded">SAVE</span>
+                        </div>
+                    </div>
+
+                    <div class="bento-card p-5 border-slate-800 flex flex-col justify-between h-32 group">
+                        <div class="flex justify-between items-start">
+                            <span class="text-[10px] text-emerald-500 uppercase font-bold tracking-widest">Savings Potential</span>
+                            <div class="p-1.5 bg-emerald-500/10 rounded-lg group-hover:scale-110 transition-transform">
+                                <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-bold text-emerald-500 font-mono">$8,420</span>
+                            <span class="text-slate-400 text-xs font-mono">/MONTH</span>
+                        </div>
+                    </div>
+
+                    <div class="bento-card p-5 border-slate-800 flex flex-col justify-between h-32 group overflow-hidden">
+                        <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
+                        <div class="flex justify-between items-start">
+                            <span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Carbon Score</span>
+                            <span class="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">A+</span>
+                        </div>
+                        <div class="flex items-baseline justify-between w-full relative z-10">
+                            <span class="text-3xl font-bold text-white font-mono">82<span class="text-sm font-normal text-slate-500">/100</span></span>
+                            <div class="h-2 w-16 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                                <div class="h-full w-[82%] bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Bento Grid -->
+                <div class="grid grid-cols-12 gap-4 auto-rows-[minmax(180px,_auto)]">
+                    
+                    <!-- Line Chart Section -->
+                    <div class="col-span-12 lg:col-span-8 row-span-2 bento-card p-6 flex flex-col">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-lg font-bold text-white tracking-tight">Cost Velocity Trends</h3>
+                                <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-widest font-bold">Daily Spend Aggregation</p>
+                            </div>
+                            <div class="flex gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_5px_rgba(79,70,229,0.8)]"></span> Spend</span>
+                                <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-slate-700"></span> Goal</span>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-h-0">
+                            <canvas id="costTimeline"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Cloud Footprint (Pie) -->
+                    <div class="col-span-12 lg:col-span-4 row-span-2 bento-card p-6 flex flex-col justify-between">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-bold text-white tracking-tight">Cloud Footprint</h3>
+                            <div class="flex gap-1">
+                                <div class="w-1 h-1 rounded-full bg-primary"></div>
+                                <div class="w-1 h-1 rounded-full bg-secondary"></div>
+                                <div class="w-1 h-1 rounded-full bg-emerald-500"></div>
+                            </div>
+                        </div>
+                        <div class="flex-1 flex items-center justify-center min-h-[180px] py-4 relative">
+                            <canvas id="cloudPie"></canvas>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span class="text-2xl font-bold text-white font-mono">3</span>
+                                <span class="text-[8px] text-slate-500 uppercase font-black">Clouds</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 pt-4 border-t border-slate-800/50">
+                            <div class="text-center group cursor-default">
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter group-hover:text-primary transition-colors">AWS</p>
+                                <p class="text-xs font-mono text-white">57%</p>
+                            </div>
+                            <div class="text-center group cursor-default">
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter group-hover:text-secondary transition-colors">Azure</p>
+                                <p class="text-xs font-mono text-white">28%</p>
+                            </div>
+                            <div class="text-center group cursor-default">
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter group-hover:text-emerald-500 transition-colors">GCP</p>
+                                <p class="text-xs font-mono text-white">15%</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cloud Analysis Form -->
+                    <div class="col-span-12 lg:col-span-4 row-span-2 bento-card p-6 flex flex-col">
+                        <h3 class="text-lg font-bold text-white mb-4 tracking-tight">Smart Cost Analyzer</h3>
+                        <form id="analyze-form" class="space-y-4 flex-1">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-500 block mb-1.5 uppercase">CPU USAGE (%)</label>
+                                    <div class="relative">
+                                        <input type="number" id="cpu-input" value="65" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all">
+                                        <span class="absolute right-4 top-2.5 text-slate-600 text-xs font-mono">%</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-500 block mb-1.5 uppercase">MEMORY (GB)</label>
+                                    <div class="relative">
+                                        <input type="number" id="mem-input" value="128" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all">
+                                        <span class="absolute right-4 top-2.5 text-slate-600 text-xs font-mono">GB</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" id="analyze-submit" class="w-full py-3 bg-primary hover:bg-opacity-90 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-primary/20 mt-4 h-12 flex items-center justify-center uppercase tracking-widest relative overflow-hidden group">
+                                <span id="analyze-btn-text" class="relative z-10">Run Analysis</span>
+                                <div class="absolute inset-0 bg-gradient-to-r from-primary to-secondary opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            </button>
+                            
+                            <div id="results-area" class="hidden mt-4 pt-4 border-t border-slate-800 animate-in fade-in duration-500">
+                                <div class="flex items-center justify-between group">
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-primary transition-colors">Projected Cost</span>
+                                    <span class="text-xl font-bold font-mono text-primary animate-pulse" id="res-cost">$0</span>
+                                </div>
+                                <p class="text-[8px] text-slate-600 mt-2 text-right uppercase tracking-[0.2em] font-black">AI Accuracy: 98.4%</p>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- AI Recommendation Box -->
+                    <div id="logic-guard-card" class="col-span-12 md:col-span-6 lg:col-span-4 row-span-2 bento-card p-6 flex flex-col justify-between overflow-hidden relative group">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-secondary/5 blur-3xl rounded-full"></div>
+                        <div class="relative z-10">
+                            <div class="flex items-center justify-between mb-6">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-1.5 h-6 bg-secondary rounded-full shadow-[0_0_8px_rgba(139,92,246,0.5)]"></div>
+                                    <h4 class="font-bold text-xs tracking-widest uppercase text-slate-400">AI Intelligence Report</h4>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-1 h-1 rounded-full bg-secondary animate-ping"></span>
+                                    <span class="text-[9px] font-mono font-bold text-secondary">ACTIVE_SCAN</span>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        Informed Recommendation:
+                                    </div>
+                                    <div class="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl">
+                                        <p class="text-sm text-white font-medium leading-relaxed">
+                                            Redirect <span class="bg-secondary/20 text-secondary px-1.5 py-0.5 rounded font-mono text-[11px]">prod-db-01</span> workloads from AWS to 
+                                            <span class="bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono text-[11px]">Azure E4s_v3</span>.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <div class="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                                        Reasoning Log:
+                                    </div>
+                                    <ul class="space-y-2">
+                                        <li class="flex items-start gap-2 text-[11px] text-slate-400">
+                                            <span class="text-secondary font-bold mt-0.5">01.</span>
+                                            <span>Historical utilization <b>never exceeded 42%</b> of R5 memory capacity over 90 days.</span>
+                                        </li>
+                                        <li class="flex items-start gap-2 text-[11px] text-slate-400">
+                                            <span class="text-secondary font-bold mt-0.5">02.</span>
+                                            <span>Target region <span class="text-white font-medium italic underline decoration-secondary">West Europe</span> offers 12% lower standard pricing.</span>
+                                        </li>
+                                        <li class="flex items-start gap-2 text-[11px] text-slate-400">
+                                            <span class="text-secondary font-bold mt-0.5">03.</span>
+                                            <span>Spot-instance availability confirmed with <b>99.9% reliability</b> for current workload type.</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-2xl relative overflow-hidden group-hover:bg-primary/10 transition-colors">
+                            <div class="flex justify-between items-end relative z-10">
+                                <div>
+                                    <p class="text-[9px] font-black text-primary uppercase tracking-[0.2em] mb-1">ESTIMATED GAIN</p>
+                                    <p class="text-2xl font-bold text-white font-mono leading-none">$1,240 <span class="text-[10px] font-normal text-slate-500">/ mo</span></p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-1">RISK LEVEL</p>
+                                    <p class="text-sm font-bold text-emerald-400 font-mono leading-none">NEGLIGIBLE</p>
+                                </div>
+                            </div>
+                            <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-primary to-secondary w-full opacity-30 group-hover:opacity-100 transition-opacity"></div>
+                        </div>
+                    </div>
+
+                    <!-- Anomalies Section -->
+                    <div id="anomalies-card" class="col-span-12 md:col-span-12 lg:col-span-8 row-span-2 bento-card p-6 flex flex-col group relative overflow-hidden">
+                        <div class="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="flex items-center gap-2">
+                                <div class="w-1.5 h-6 bg-alert rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
+                                <h3 class="text-lg font-bold text-white tracking-tight">Active Anomalies Detected</h3>
+                            </div>
+                            <div class="px-3 py-1 bg-alert/10 border border-alert/20 rounded-full text-[10px] font-bold text-alert uppercase tracking-widest animate-pulse">
+                                3 Critical Alerts
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
+                            <!-- Critical Error -->
+                            <div class="p-4 bg-slate-900/50 border border-slate-800 rounded-2xl relative flex flex-col justify-between anomaly-critical">
+                                <div class="absolute top-2 right-2">
+                                    <span class="flex h-3 w-3">
+                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                    </span>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2 text-[10px] font-bold text-red-500 uppercase mb-2">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                        Memory Leak
+                                    </div>
+                                    <p class="text-xs text-white font-medium mb-1 truncate">prod-api-eu-1</p>
+                                    <p class="text-[10px] text-slate-500 leading-relaxed">+420% usual spend velocity detected.</p>
+                                </div>
+                                <div class="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center text-[10px] font-bold">
+                                    <span class="text-slate-500">2m ago</span>
+                                    <span class="text-white hover:text-red-500 cursor-pointer transition-colors px-2 py-0.5 bg-slate-800 rounded">FIX NOW</span>
+                                </div>
+                            </div>
+
+                            <!-- Warning -->
+                            <div class="p-4 bg-slate-900/50 border border-slate-800 rounded-2xl relative flex flex-col justify-between hover:border-amber-500/50 transition-colors group/card">
+                                <div class="absolute top-2 right-2">
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2 text-[10px] font-bold text-amber-500 uppercase mb-2">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        Zombie Instance
+                                    </div>
+                                    <p class="text-xs text-white font-medium mb-1 truncate">dev-test-stack-04</p>
+                                    <p class="text-[10px] text-slate-500 leading-relaxed">No traffic for 14 days. Idle cost: $140/mo.</p>
+                                </div>
+                                <div class="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center text-[10px] font-bold">
+                                    <span class="text-slate-500">1h ago</span>
+                                    <span class="text-white hover:text-amber-500 cursor-pointer transition-colors px-2 py-0.5 bg-slate-800 rounded uppercase">Terminate</span>
+                                </div>
+                            </div>
+
+                            <!-- Info -->
+                            <div class="p-4 bg-slate-900/50 border border-slate-800 rounded-2xl relative flex flex-col justify-between hover:border-blue-500/50 transition-colors group/card">
+                                <div class="absolute top-2 right-2">
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2 text-[10px] font-bold text-blue-500 uppercase mb-2">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        Version Drift
+                                    </div>
+                                    <p class="text-xs text-white font-medium mb-1 truncate">db-replica-west</p>
+                                    <p class="text-[10px] text-slate-500 leading-relaxed">Version discrepancy detected between nodes.</p>
+                                </div>
+                                <div class="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center text-[10px] font-bold">
+                                    <span class="text-slate-500">4h ago</span>
+                                    <span class="text-white hover:text-blue-500 cursor-pointer transition-colors px-2 py-0.5 bg-slate-800 rounded uppercase">Inspect</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Simulator & Sustainability Stack -->
+                    <div id="simulator-card" class="col-span-12 md:col-span-6 lg:col-span-4 row-span-2 flex flex-col gap-4">
+                        <!-- Simulator Slider -->
+                        <div class="flex-1 bento-card p-6 flex flex-col justify-between group overflow-hidden relative">
+                            <div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                            <h4 class="font-bold text-xs tracking-widest uppercase text-slate-400">What-If Capacity Simulator</h4>
+                            <div class="space-y-4">
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center text-[10px] font-bold">
+                                        <span class="text-slate-500 uppercase tracking-widest">Scaling Factor</span>
+                                        <span class="text-white font-mono px-2 py-0.5 bg-slate-800 rounded" id="scale-val">1.0x</span>
+                                    </div>
+                                    <input type="range" id="scale-slider" min="0.5" max="4" step="0.1" value="1" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary hover:accent-secondary transition-all">
+                                </div>
+                                <div class="bg-dark/80 border border-slate-800 rounded-xl px-4 py-3 relative overflow-hidden">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">PROJECTED DELTA</span>
+                                        <span id="sim-impact" class="text-lg font-bold text-white font-mono">$0</span>
+                                    </div>
+                                    <div class="absolute bottom-0 left-0 h-0.5 bg-primary w-full opacity-30"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sustainability -->
+                        <div class="flex-1 bento-card bg-gradient-to-br from-dark-card to-emerald-950/20 p-6 flex flex-col justify-between group">
+                            <div class="flex justify-between items-center">
+                                <h4 class="font-bold text-xs tracking-widest uppercase text-emerald-500">Eco Optimization</h4>
+                                <div class="flex gap-2">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-900"></div>
+                                </div>
+                            </div>
+                            <div class="flex items-baseline gap-2 group-hover:translate-x-1 transition-transform">
+                                <p id="eco-tons" class="text-3xl font-bold text-white font-mono">1.2</p>
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">tons CO2e / Year</p>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <p class="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Global Rank: Top 5%</p>
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JS Logic -->
+    <script>
+        // 1. Chart.js Initialization
+        const initCharts = () => {
+            const ctxCost = document.getElementById('costTimeline');
+            const ctxCloud = document.getElementById('cloudPie');
+
+            // Line Chart
+            new Chart(ctxCost, {
+                type: 'line',
+                data: {
+                    labels: ['Apr 1', 'Apr 5', 'Apr 10', 'Apr 15', 'Apr 20', 'Apr 25', 'Apr 26'],
+                    datasets: [{
+                        label: 'Cost Gradient',
+                        data: [32000, 31500, 34000, 36000, 39000, 42000, 42910],
+                        borderColor: '#4f46e5',
+                        backgroundColor: (context) => {
+                            const canvas = context.chart.canvas;
+                            const ctx = canvas.getContext('2d');
+                            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                            gradient.addColorStop(0, 'rgba(79, 70, 229, 0.2)');
+                            gradient.addColorStop(1, 'rgba(79, 70, 229, 0)');
+                            return gradient;
+                        },
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#4f46e5',
+                        pointBorderColor: '#020617',
+                        pointBorderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { 
+                            beginAtZero: false, 
+                            grid: { color: 'rgba(255,255,255,0.03)' },
+                            ticks: { color: '#475569', font: { family: 'JetBrains Mono', size: 10 } }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: '#475569', font: { family: 'JetBrains Mono', size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            // Pie Chart
+            new Chart(ctxCloud, {
+                type: 'doughnut',
+                data: {
+                    labels: ['AWS', 'Azure', 'GCP'],
+                    datasets: [{
+                        data: [57, 28, 15],
+                        backgroundColor: ['#4f46e5', '#8b5cf6', '#10b981'],
+                        borderWidth: 0,
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '80%',
+                    plugins: { legend: { display: false } }
+                }
+            });
+        };
+
+        // 2. Interactivity Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+
+            // Form Submit Simulation
+            const form = document.getElementById('analyze-form');
+            const submitBtn = document.getElementById('analyze-submit');
+            const btnText = document.getElementById('analyze-btn-text');
+            const results = document.getElementById('results-area');
+            const resCost = document.getElementById('res-cost');
+            
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const cpu = document.getElementById('cpu-input').value;
+                const mem = document.getElementById('mem-input').value;
+                
+                // Loading state
+                btnText.innerText = "Analyzing Nodes...";
+                submitBtn.classList.add('opacity-80', 'cursor-not-allowed');
+                results.classList.add('hidden');
+
+                setTimeout(() => {
+                    const mockCost = (cpu * 12.5) + (mem * 4.2);
+                    btnText.innerText = "Re-analyze Nodes";
+                    submitBtn.classList.remove('opacity-80', 'cursor-not-allowed');
+                    results.classList.remove('hidden');
+                    resCost.innerText = `$${Math.round(mockCost).toLocaleString()}`;
+                    
+                    // Add secondary log insight
+                    const logEl = document.createElement('div');
+                    logEl.className = "mt-3 p-3 bg-black/40 rounded-xl border border-slate-800/50 text-[9px] font-mono text-slate-500 leading-relaxed";
+                    logEl.innerHTML = `> SCANNING NODES...<br>> CLOUD_SYNC: SUCCESS<br>> OPTIMIZING PLACEMENT...<br>> <span class="text-emerald-500">OPTIMAL_FOUND</span>`;
+                    results.appendChild(logEl);
+                }, 1200);
+            });
+
+            // Simulator Slider logic
+            const slider = document.getElementById('scale-slider');
+            const scaleDisplay = document.getElementById('scale-val');
+            const impactDisplay = document.getElementById('sim-impact');
+            const ecoDisplay = document.getElementById('eco-tons');
+            const baseMonthly = 42910;
+
+            const updateSimulator = (val) => {
+                const delta = (baseMonthly * val) - baseMonthly;
+                scaleDisplay.innerText = `${parseFloat(val).toFixed(1)}x`;
+                impactDisplay.innerText = `${delta > 0 ? '+$' : delta < 0 ? '-$' : '$'}${Math.abs(Math.round(delta)).toLocaleString()}`;
+                impactDisplay.className = `text-lg font-bold font-mono transition-colors ${delta > 0 ? 'text-alert' : 'text-emerald-500'}`;
+                ecoDisplay.innerText = (1.2 * val).toFixed(2);
+                slider.value = val;
+            };
+
+            slider.addEventListener('input', (e) => updateSimulator(e.target.value));
+
+            // Sidebar Active State & Mobile Toggle
+            const sidebar = document.querySelector('aside');
+            const mobileBtn = document.getElementById('mobile-menu-btn');
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            mobileBtn?.addEventListener('click', () => {
+                sidebar.classList.toggle('hidden');
+                sidebar.classList.toggle('fixed');
+                sidebar.classList.toggle('inset-0');
+                sidebar.classList.toggle('z-50');
+            });
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth < 1024) {
+                        sidebar.classList.add('hidden');
+                    }
+                    navLinks.forEach(l => {
+                        l.classList.remove('bg-slate-800', 'text-white');
+                        l.classList.add('text-slate-400');
+                    });
+                    link.classList.add('bg-slate-800', 'text-white');
+                    link.classList.remove('text-slate-400');
+                });
+            });
+
+            // URL Params Check
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('scale')) updateSimulator(params.get('scale'));
+        });
+    </script>
+</body>
+</html>
+</body>
+</html>
